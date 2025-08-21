@@ -1,0 +1,26 @@
+analizar cada documento
+
+datos a parsear:
+	// comprador
+	nombre completo
+	rut
+	nacionalidad
+	estado civil
+	ocupación
+	n. documento
+
+	// vendedor
+	nombre completo
+	rut
+	nacionalidad
+	estado civil
+	ocupación
+	n. documento
+
+	// inmueble
+	precio del inmueble
+	forma de pago (al contado u otro)
+	plazo
+
+roadmap.txt
+
