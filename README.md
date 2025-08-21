@@ -13,15 +13,16 @@ Este proyecto automatiza la verificación de documentos relacionados a la compra
 ```
 inmobiliaria-match/
 ├── main.py
+├── gui.py.               # Interfaz gráfica con Tkinter
+├── config.py             # Configuración general (API Key, carpetas, etc.)
 ├── requirements.txt
 ├── .env
 ├── src/
-│   ├── gui.py              # Interfaz gráfica con Tkinter
-│   ├── extractor.py        # Procesa texto con OpenAI
-│   ├── matcher.py          # Compara datos de promesas y certificados
-│   ├── reporter.py         # Genera Excel con resultados
-│   ├── utils.py            # OCR, normalización de texto
-├── reports/                # Carpeta de salida para los reportes generados
+│   ├── __init__.py
+│   ├── extractor.py      # Procesa texto con OpenAI
+│   ├── matcher.py        # Compara datos de promesas y certificados
+│   ├── reporter.py       # Genera Excel con resultados
+│   ├── utils.py          # OCR, normalización de texto
 ```
 
 ---
@@ -70,9 +71,15 @@ Se abrirá una interfaz gráfica donde podrás seleccionar:
 
 * Carpeta de certificados
 * Carpeta de promesas
-* Botón "Ejecutar Comparación"
+* Carpeta de salida para el reporte
+* Botón "Ejecutar"
 
-El sistema analizará y generará un reporte Excel dentro de `reports/`.
+Al iniciar el proceso:
+
+* El botón "Interrumpir" se habilita, y "Ejecutar" se desactiva.
+* El proceso puede cancelarse antes de terminar.
+
+El sistema analizará y generará un reporte Excel con nombre `REPORTE_YYYY_MM_DD-HHh_MMm.xlsx` dentro de la carpeta seleccionada, en orden cronológico.
 
 ---
 
@@ -84,7 +91,7 @@ Colores:
 
 * 🟩 **Verde**: todos los datos coinciden.
 * 🟧 **Naranja**: hay diferencias entre campos (ej. RUT o monto).
-* 🔵 **Rojo**: falta certificado correspondiente.
+* 🔴 **Rojo**: falta certificado correspondiente.
 
 ---
 
@@ -132,6 +139,18 @@ OpenAI cobra por token procesado. Los precios para `gpt-4o` son los siguientes:
 
 ---
 
+## 🧰 Módulos principales
+
+| Módulo         | Descripción                                                                   |
+| -------------- | ----------------------------------------------------------------------------- |
+| `extractor.py` | Usa OpenAI para transformar texto plano OCR en JSON estructurado.             |
+| `matcher.py`   | Compara cada par promesa-certificado y genera dataframe con resultados.       |
+| `reporter.py`  | Exporta los resultados a Excel con formato de colores según match.            |
+| `utils.py`     | Funciones de OCR, normalización y carga de PDFs.                              |
+| `gui.py`       | GUI en Tkinter que permite elegir carpetas y controlar el flujo del programa. |
+
+---
+
 ## 🚀 Futuras mejoras
 
 * [ ] Cachear respuestas de la API para evitar costos duplicados.
@@ -144,7 +163,7 @@ OpenAI cobra por token procesado. Los precios para `gpt-4o` son los siguientes:
 
 ## 🧑‍💻 Desarrollado por
 
-[🌶️chilisites](https://chilisites.com)
+[🌶️ chilisites](https://chilisites.com)
 
 > Proyecto: `inmobiliaria-matching`
 > Lenguaje: Python + Tkinter + OpenAI API

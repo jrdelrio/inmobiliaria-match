@@ -2,6 +2,8 @@
 import pandas as pd
 from pathlib import Path
 from config import REPORT_DIR
+from datetime import datetime
+
 
 def colorize(row):
     """
@@ -14,14 +16,17 @@ def colorize(row):
     else:
         return ["background-color: #ccffcc"] * len(row)  # verde
 
-def export_to_excel(df: pd.DataFrame, output_name: str = "reporte_mismatches.xlsx"):
+def export_to_excel(df: pd.DataFrame, output_name: str,  output_dir: Path):
     """
     Exporta `df` a un archivo XLSX con estilos.
     """
-    path = REPORT_DIR / output_name
+    output_dir.mkdir(parents=True, exist_ok=True)
+    path = output_dir / output_name
     styled = df.style.apply(colorize, axis=1)
+    
     # Guardar
     with pd.ExcelWriter(path, engine="openpyxl") as writer:
         styled.to_excel(writer, index=False, sheet_name="Reporte")
+        
     print(f"Reporte guardado en: {path}")
 

@@ -1,6 +1,6 @@
 # main.py
 import sys
-from src.gui import App
+from gui import App
 
 from pathlib import Path
 from dotenv import load_dotenv

@@ -11,8 +11,7 @@ api_key = load_dotenv(dotenv_path=BASE_DIR / ".env")
 
 
 # Ruta donde se guardará el reporte
-REPORT_DIR = Path("reports")
-REPORT_DIR.mkdir(exist_ok=True)
+REPORT_DIR = None
 
 # API key de OpenAI (puedes guardarla en variable de entorno)
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
