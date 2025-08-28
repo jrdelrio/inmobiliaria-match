@@ -1,83 +1,88 @@
-import argparse
-import subprocess
 import sys
+import subprocess
 from pathlib import Path
+import tempfile
 import pdfplumber
+import os
+import shutil
 
-def run_ocr(input_pdf: Path, ocr_pdf: Path, languages="spa+eng", pages=None, force=False):
-    """
-    Ejecuta OCRmyPDF vía CLI.
-    -l spa+eng: español + inglés (ajusta a tus documentos)
-    --rotate-pages, --deskew: corrige rotaciones y sesgos.
-    --optimize 1: balance calidad/tamaño.
-    """
+LANG = "spa+eng"
+OUTDIR = "output"
+
+def run_ocr_to_temp_pdf(input_pdf: Path) -> Path:
+    """Ejecuta ocrmypdf con force-ocr y devuelve la ruta a un PDF temporal."""
+    if shutil.which("ocrmypdf") is None:
+        print("[ERROR] No se encontró 'ocrmypdf' en el PATH. Instálalo con Homebrew: brew install ocrmypdf tesseract ghostscript")
+        sys.exit(1)
+
+    # PDF temporal para la salida del OCR
+    tmp_fd, tmp_path = tempfile.mkstemp(suffix=".pdf")
+    os.close(tmp_fd)  # no necesitamos mantener el descriptor abierto
+    tmp_pdf = Path(tmp_path)
+
     cmd = [
         "ocrmypdf",
-        "--language", languages,
+        "--language", LANG,
         "--rotate-pages",
         "--deskew",
         "--optimize", "1",
         "--output-type", "pdf",
         "--invalidate-digital-signatures",
-        #"--skip-text",        # si ya tiene texto, no fuerza OCR (rápido y seguro)
+        "--force-ocr",  # <- rasteriza siempre y rehace OCR
         str(input_pdf),
-        str(ocr_pdf),
+        str(tmp_pdf),
     ]
-
-    if pages:
-        cmd += ["--pages", str(pages)]
-    if force:
-        cmd += ["--force-ocr"]
-    else:
-        cmd += ["--skip-text"]
 
     print(f"[INFO] Ejecutando: {' '.join(cmd)}")
     res = subprocess.run(cmd, capture_output=True, text=True)
     if res.returncode != 0:
-        print("[ERROR] OCRmyPDF falló:\n", res.stderr)
+        # Limpia el temporal si falló
+        try:
+            tmp_pdf.unlink(missing_ok=True)
+        except Exception:
+            pass
+        print("[ERROR] OCRmyPDF falló:\n", res.stderr.strip() or res.stdout.strip())
         sys.exit(1)
-    print("[INFO] OCR completo ✓")
 
-def extract_text(ocr_pdf: Path) -> str:
-    """
-    Extrae texto con pdfplumber. Une páginas con dos saltos de línea.
-    """
+    print("[INFO] OCR completo ✓")
+    return tmp_pdf
+
+def extract_text(pdf_path: Path) -> str:
+    """Extrae todo el texto con pdfplumber."""
     chunks = []
-    with pdfplumber.open(ocr_pdf) as pdf:
-        for i, page in enumerate(pdf.pages, start=1):
+    with pdfplumber.open(pdf_path) as pdf:
+        for page in pdf.pages:
             txt = page.extract_text() or ""
             chunks.append(txt.strip())
     return "\n\n".join(chunks).strip()
 
 def main():
-    parser = argparse.ArgumentParser(description="OCR + extracción de texto (y tablas opcional) de PDF.")
-    parser.add_argument("--input", "-i", required=True, help="Ruta al PDF de entrada (escaneado o mixto).")
-    parser.add_argument("--outdir", "-o", default="output", help="Carpeta de salida.")
-    parser.add_argument("--lang", "-l", default="spa+eng", help="Idiomas Tesseract: ej. 'spa', 'eng', 'spa+eng'.")
-    parser.add_argument("--pages", default=None, help="Rango de páginas para aplicar OCR, ej. '2-', '3-5', '1,3,5'.")
-    args = parser.parse_args()
+    if len(sys.argv) < 2:
+        print("Uso: python main.py <ruta_al_pdf>")
+        sys.exit(1)
 
-    input_pdf = Path(args.input).resolve()
-    outdir = Path(args.outdir).resolve()
-    outdir.mkdir(parents=True, exist_ok=True)
-
+    input_pdf = Path(sys.argv[1]).resolve()
     if not input_pdf.exists():
         print(f"[ERROR] No existe el archivo: {input_pdf}")
         sys.exit(1)
 
-    ocr_pdf = outdir / f"{input_pdf.stem}_OCR.pdf"
+    outdir = Path(OUTDIR).resolve()
+    outdir.mkdir(parents=True, exist_ok=True)
     text_txt = outdir / f"{input_pdf.stem}_OCR.txt"
 
-    # 1) OCR
-    run_ocr(input_pdf, ocr_pdf, languages=args.lang)
+    # 1) OCR a PDF temporal (no persistimos PDF final)
+    ocr_tmp_pdf = run_ocr_to_temp_pdf(input_pdf)
 
-    # 2) Texto → string + archivo .txt
-    full_text = extract_text(ocr_pdf)
+    # 2) Extraer texto y guardar .txt
+    full_text = extract_text(ocr_tmp_pdf)
     text_txt.write_text(full_text, encoding="utf-8")
     print(f"[INFO] Texto extraído: {len(full_text)} caracteres → {text_txt}")
 
-    # 4) Listo: también tienes 'full_text' en memoria por si quieres seguir procesando
-    # (ej. pasar a un LLM, regex, etc.)
+    # 3) Borrar PDF temporal
+    try:
+        ocr_tmp_pdf.unlink(missing_ok=True)
+    except Exception as e:
+        print(f"[WARN] No se pudo borrar temporal: {ocr_tmp_pdf} ({e})")
 
 if __name__ == "__main__":
     main()
